@@ -57,7 +57,7 @@ typedef struct {
 CNN* createCNN();
 void freeCNN(CNN* cnn);
 void forwardPass(CNN* cnn, float* input, float* output);
-void backwardPass(CNN* cnn, float* input, float* gradOutput);
+void backwardPass(CNN* cnn, float* input, int trueLabel);
 void updateParameters(CNN* cnn, float learningRate);
 
 #endif
