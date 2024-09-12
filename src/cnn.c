@@ -1,3 +1,4 @@
+#include <complex.h>
 #include <cstddef>
 #include <stdlib.h>
 #include <string.h>
@@ -139,6 +140,74 @@ void backwardPass(CNN *cnn, float *input, int trueLabel)
         {
             conv2Output.data[i] = relu(conv2Output.data[i]);
         }
+
+    Tensor pool2Output = {NULL, 7,7,64};
+    pool2Output.data = (float*)malloc(7*7*64*sizeof(float));
+    forwardMaxPool(&cnn->pool2, &conv2Output, &pool2Output);
+
+    Tensor conv3Output = {NULL, 7,7,128};
+    conv3Output.data = (float*)malloc(7*7*128*sizeof(float));
+    forwardConv(&cnn->conv3, &pool2Output, &conv3Output);
+    for(int i = 0; i<7*7*128; i++)
+        {
+            conv3Output.data[i] = relu(conv3Output.data[i]);
+        }
+
+    float* flattenOutput = conv3Output.data;
+
+    float* fc1Output = (float*)malloc(512*sizeof(float));
+    forwardFC(&cnn->fc1, flattenOutput, fc1Output);
+    for(int i = 0; i<512; i++)
+        {
+            fc1Output[i] = relu(fc1Output[i]);
+        }
+
+    float* dropoutOutput = (float*)malloc(512 * sizeof(float));
+    forwardDropout(&cnn->dropout, fc1Output, dropoutOutput, 512, 1);
+
+    float* fc2Output = (float*)malloc(CLASSES * sizeof(float));
+    forwardFC(&cnn->fc2, dropoutOutput, fc2Output);
+
+    softmax(fc2Output, CLASSES);
+
+    // Backward Pass
+    float* gradOutput = (float*)calloc(CLASSES, sizeof(float));
+    gradOutput[trueLabel] = -1.0 / fc2Output[trueLabel]; // Derivative of Cross-Entropy Loss
+
+    // FC2 backward
+    float* gradFC2Input = (float*)malloc(512 * sizeof(float));
+    backwardFC(&cnn->fc2, dropoutOutput, gradFC2Input, gradOutput);
+
+    // Dropout Backward
+    float* gradDropoutInput = (float*)malloc(512 * sizeof(float));
+    backwardDropout(&cnn->dropout, gradDropoutInput, gradFC2Input, 512);
+
+    // FC1 Backward
+    float* gradFC1Input = (float*)malloc(7*7*128 * sizeof(float));
+    backwardFC(&cnn->fc1, flattenOutput, gradFC1Input, gradDropoutInput);
+    for(int i = 0; i<512; i++)
+        {
+            gradFC1Input[i] *= reluGradient(fc1Output[i]);
+        }
+
+    // Reshape gradFC1Input to match conv3Output dimensions
+    Tensor gradConv3Output = {gradFC1Input, 7, 7, 128};
+
+    // Conv3 backward
+    Tensor gradPool2Output = {NULL, 7, 7, 64};
+    gradPool2Output.data = (float*)malloc(7*7*64 * sizeof(float));
+    backwardConv(&cnn->conv3, &pool2Output, &gradPool2Output, &gradConv3Output);
+    for(int i = 0; i<7*7*64; i++)
+        {
+            gradConv3Output.data[i] *= reluGradient(gradConv3Output.data[i]);
+        }
+
+    // Pool2 Backward
+    Tensor gradConv2Output = {NULL, 14, 14, 64};
+    gradConv2Output.data = (float*)malloc(14*14*64 * sizeof(float));
+    backwardMaxPool(&cnn->pool2, &conv2Output, &gradConv2Output, &gradPool2Output);
+
+
 
 
 }

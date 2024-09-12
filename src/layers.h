@@ -19,7 +19,7 @@ void backwardMaxPool(MaxPoolLayer* layer, Tensor* input, Tensor* gradInput, Tens
 FCLayer* createFCLayer(int inputSize, int outputSize);
 void freeFCLayer(FCLayer* layer);
 void forwardFC(FCLayer* layer, float* input, float* output);
-void backwardFC(FCLayer* layer, float* gradinput, float* gradoutput);
+void backwardFC(FCLayer* layer, float* dropoutOutput, float* gradinput, float* gradoutput);
 
 // DropOut Layer
 DropoutLayer* createDropoutLayer(float rate);
